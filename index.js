@@ -241,7 +241,7 @@ async function run() {
         })
 
         // stats or analytics
-        app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+        app.get('/admin-stats', async (req, res) => {
             const users = await userCollection.estimatedDocumentCount();
             const menuItems = await menuCollection.estimatedDocumentCount();
             const orders = await paymentCollection.estimatedDocumentCount();
@@ -249,6 +249,8 @@ async function run() {
             // this is not the best way
             // const payments = await paymentCollection.find().toArray();
             // const revenue = payments.reduce((total, payment) => total + payment.price, 0);
+
+
 
 
             const result = await paymentCollection.aggregate([
@@ -261,20 +263,8 @@ async function run() {
                     }
                 }
             ]).toArray();
+
             const revenue = result.length > 0 ? result[0].totalRevenue : 0;
-
-            // const result = await paymentCollection.aggregate([
-            //     {
-            //         $group: {
-            //             _id: null,
-            //             totalRevenue: {
-            //                 $sum: '$price'
-            //             }
-            //         }
-            //     }
-            // ]).toArray();
-
-            // const revenue = result.length > 0 ? result[0].totalRevenue : 0;
 
             res.send({
                 users,
@@ -296,42 +286,42 @@ async function run() {
         */
 
         // using aggregate pipeline
-        // app.get('/order-stats', verifyToken, verifyAdmin, async (req, res) => {
-        //     const result = await paymentCollection.aggregate([
-        //         {
-        //             $unwind: '$menuItemIds'
-        //         },
-        //         {
-        //             $lookup: {
-        //                 from: 'menu',
-        //                 localField: 'menuItemIds',
-        //                 foreignField: '_id',
-        //                 as: 'menuItems'
-        //             }
-        //         },
-        //         {
-        //             $unwind: '$menuItems'
-        //         },
-        //         {
-        //             $group: {
-        //                 _id: '$menuItems.category',
-        //                 quantity: { $sum: 1 },
-        //                 revenue: { $sum: '$menuItems.price' }
-        //             }
-        //         },
-        //         {
-        //             $project: {
-        //                 _id: 0,
-        //                 category: '$_id',
-        //                 quantity: '$quantity',
-        //                 revenue: '$revenue'
-        //             }
-        //         }
-        //     ]).toArray();
+        app.get('/order-stats', verifyToken, verifyAdmin, async (req, res) => {
+            const result = await paymentCollection.aggregate([
+                {
+                    $unwind: '$menuItemIds'
+                },
+                {
+                    $lookup: {
+                        from: 'menu',
+                        localField: 'menuItemIds',
+                        foreignField: '_id',
+                        as: 'menuItems'
+                    }
+                },
+                {
+                    $unwind: '$menuItems'
+                },
+                {
+                    $group: {
+                        _id: '$menuItems.category',
+                        quantity: { $sum: 1 },
+                        revenue: { $sum: '$menuItems.price' }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        category: '$_id',
+                        quantity: '$quantity',
+                        revenue: '$revenue'
+                    }
+                }
+            ]).toArray();
 
-        //     res.send(result);
+            res.send(result);
 
-        // })
+        })
 
 
         // Send a ping to confirm a successful connection
